@@ -41,6 +41,8 @@ results*.csv
 coco/
 coco128/
 VOC/
+turtle_data/
+turtle_keypoints_data/
 
 coco2017labels-segments.zip
 test2017.zip
@@ -69,6 +71,7 @@ darknet53.conv.74
 yolov3-tiny.conv.15
 *.ptl
 *.trt
+yolott/
 
 # GitHub Python GitIgnore ----------------------------------------------------------------------------------------------
 # Byte-compiled / optimized / DLL files
