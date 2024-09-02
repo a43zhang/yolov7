@@ -1,3 +1,6 @@
+turtle_data/
+turtle_keypoints_data/
+yolott/
 # Repo-specific GitIgnore ----------------------------------------------------------------------------------------------
 *.jpg
 *.jpeg
