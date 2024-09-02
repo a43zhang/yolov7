@@ -1,7 +1,9 @@
 # parameters
 nc: 1  # number of classes
+nkpt: 6
 depth_multiple: 1.0  # model depth multiple
 width_multiple: 1.0  # layer channel multiple
+dw_conv_kpt: True
 
 # anchors
 anchors:
@@ -136,5 +138,5 @@ head:
    [88, 1, RepConv, [512, 3, 1]],
    [101, 1, RepConv, [1024, 3, 1]],
 
-   [[102,103,104], 1, IDetect, [nc, anchors]],   # Detect(P3, P4, P5)
+   [[102,103,104], 1, IKeypoint, [nc, anchors, nkpt]],   # Detect(P3, P4, P5)
   ]
