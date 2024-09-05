@@ -242,7 +242,6 @@ class IKeypoint(nn.Module):
                                           DWConv(x, x, k=3), nn.Conv2d(x, self.no_kpt * self.na, 1)) for x in ch)
             else: #keypoint head is a single convolution
                 self.m_kpt = nn.ModuleList(nn.Conv2d(x, self.no_kpt * self.na, 1) for x in ch)
-
         self.inplace = inplace  # use in-place ops (e.g. slice assignment)
 
     def forward(self, x):
@@ -252,11 +251,16 @@ class IKeypoint(nn.Module):
         for i in range(self.nl):
             if self.nkpt is None or self.nkpt==0:
                 x[i] = self.im[i](self.m[i](self.ia[i](x[i])))  # conv
+                bs, _, ny, nx = x[i].shape  # x(bs,255,20,20) to x(bs,3,20,20,85) (_ is 3 x num values)
             else :
-                x[i] = torch.cat((self.im[i](self.m[i](self.ia[i](x[i]))), self.m_kpt[i](x[i])), axis=1)
-
-            bs, _, ny, nx = x[i].shape  # x(bs,255,20,20) to x(bs,3,20,20,85)
-            x[i] = x[i].view(bs, self.na, self.no, ny, nx).permute(0, 1, 3, 4, 2).contiguous()
+                bs, _, ny, nx = x[i].shape  # x(bs,255,20,20) to x(bs,3,20,20,85) (_ is 3 x num values)
+                detection_output = self.im[i](self.m[i](self.ia[i](x[i])))
+                keypoint_output = self.m_kpt[i](x[i])
+                # Reshape both outputs to have the same number of dimensions, e.g., (B, A, H, W, C_det) and (B, A, H, W, C_kpt)
+                detection_output = detection_output.view(bs, self.na, self.no_det, ny, nx).permute(0, 1, 3, 4, 2).contiguous()
+                keypoint_output = keypoint_output.view(bs, self.na, self.no_kpt, ny, nx).permute(0, 1, 3, 4, 2).contiguous()
+                x[i] = torch.cat([detection_output, keypoint_output], dim=-1)
+            
             x_det = x[i][..., :6]
             x_kpt = x[i][..., 6:]
 
@@ -287,7 +291,7 @@ class IKeypoint(nn.Module):
                         #x_kpt[..., 1::3] = ((x_kpt[..., 1::3].tanh() * 2.) ** 3 * self.anchor_grid[i][...,1].unsqueeze(4).repeat(1,1,1,1,self.nkpt)) + kpt_grid_y.repeat(1,1,1,1,17) * self.stride[i]  # xy
                         #x_kpt[..., 0::3] = (((x_kpt[..., 0::3].sigmoid() * 4.) ** 2 - 8.) * self.anchor_grid[i][...,0].unsqueeze(4).repeat(1,1,1,1,self.nkpt)) + kpt_grid_x.repeat(1,1,1,1,17) * self.stride[i]  # xy
                         #x_kpt[..., 1::3] = (((x_kpt[..., 1::3].sigmoid() * 4.) ** 2 - 8.) * self.anchor_grid[i][...,1].unsqueeze(4).repeat(1,1,1,1,self.nkpt)) + kpt_grid_y.repeat(1,1,1,1,17) * self.stride[i]  # xy
-                        x_kpt[..., 2::2] = x_kpt[..., 2::2].sigmoid()
+                        # x_kpt[..., 2::2] = x_kpt[..., 2::2].sigmoid()
 
                     y = torch.cat((xy, wh, y[..., 4:], x_kpt), dim = -1)
 
@@ -299,7 +303,6 @@ class IKeypoint(nn.Module):
                     y = torch.cat((xy, wh, y[..., 4:]), -1)
 
                 z.append(y.view(bs, -1, self.no))
-
         return x if self.training else (torch.cat(z, 1), x)
 
     @staticmethod
@@ -525,6 +528,7 @@ class Model(nn.Module):
         if anchors:
             logger.info(f'Overriding model.yaml anchors with anchors={anchors}')
             self.yaml['anchors'] = round(anchors)  # override yaml value
+
         self.model, self.save = parse_model(deepcopy(self.yaml), ch=[ch])  # model, savelist
         self.names = [str(i) for i in range(self.yaml['nc'])]  # default names
         # print([x.shape for x in self.forward(torch.zeros(1, ch, 64, 64))])
@@ -621,7 +625,6 @@ class Model(nn.Module):
                     m(x.copy() if c else x)
                 dt.append((time_synchronized() - t) * 100)
                 print('%10.1f%10.0f%10.1fms %-40s' % (o, m.np, dt[-1], m.type))
-
             x = m(x)  # run
             
             y.append(x if m.i in self.save else None)  # save output
@@ -678,7 +681,7 @@ class Model(nn.Module):
             b.data[:, 4] += math.log(8 / (640 / s) ** 2)  # obj (8 objects per 640 image)
             b.data[:, 5:] += math.log(0.6 / (m.nc - 0.99)) if cf is None else torch.log(cf / cf.sum())  # cls
             mi.bias = torch.nn.Parameter(b.view(-1), requires_grad=True)
-
+        
     def _print_biases(self):
         m = self.model[-1]  # Detect() module
         for mi in m.m:  # from

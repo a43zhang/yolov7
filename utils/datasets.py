@@ -499,7 +499,6 @@ class LoadImagesAndLabels(Dataset):  # for training/testing
                         assert (l >= 0).all(), 'negative labels'
                         assert (l[:, 1:] <= 1).all(), 'non-normalized or out of bounds coordinate labels'
                         # assert np.unique(l, axis=0).shape[0] == l.shape[0], 'duplicate labels'
-                        l = [np.array(x[1:], dtype=np.float32).reshape(-1, 2) for x in l]
                     else:
                         ne += 1  # label empty
                         l = np.zeros((0, 5), dtype=np.float32)
@@ -523,7 +522,6 @@ class LoadImagesAndLabels(Dataset):  # for training/testing
         x['version'] = 0.1  # cache version
         torch.save(x, path)  # save for next time
         logging.info(f'{prefix}New cache created: {path}')
-        breakpoint()
         return x
 
     def __len__(self):
@@ -569,7 +567,7 @@ class LoadImagesAndLabels(Dataset):  # for training/testing
 
             labels = self.labels[index].copy()
             if labels.size:  # normalized xywh to pixel xyxy format
-                labels[:, 1:] = xywhn2xyxy(labels[:, 1:], ratio[0] * w, ratio[1] * h, padw=pad[0], padh=pad[1])
+                labels[:, 1:5] = xywhn2xyxy(labels[:, 1:5], ratio[0] * w, ratio[1] * h, padw=pad[0], padh=pad[1])
 
         if self.augment:
             # Augment imagespace
@@ -621,11 +619,11 @@ class LoadImagesAndLabels(Dataset):  # for training/testing
                 img = np.fliplr(img)
                 if nL:
                     labels[:, 1] = 1 - labels[:, 1]
-
-        labels_out = torch.zeros((nL, 6))
+        num_kpts = (labels.shape[1]-5)//2
+        labels_out = torch.zeros((nL, 6+2*num_kpts))
         if nL:
             labels_out[:, 1:] = torch.from_numpy(labels)
-
+            
         # Convert
         img = img[:, :, ::-1].transpose(2, 0, 1)  # BGR to RGB, to 3x416x416
         img = np.ascontiguousarray(img)

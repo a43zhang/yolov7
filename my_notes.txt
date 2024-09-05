@@ -3,10 +3,45 @@ FPN
 head/backbone
 DDP
 Focal loss
-
+Depthwise convolution
+precision recall, MAP
 
 python train.py --workers 8 --device 0 --batch-size 8 --data data/turtle.yaml --img 256 256 --cfg cfg/training/yolov7.yaml --weights '' --name yolov7_turtle --hyp data/hyp.scratch.p5.yaml
 
 
 python train.py --workers 8 --device 0 --batch-size 8 --data data/turtlekpt.yaml --img 256 256 --cfg cfg/training/yolov7-kpt.yaml --weights '' --name yolov7_turtlekpts --hyp data/hyp.scratch.p5.yaml
 # IS DW CONV ENABLED?
+# IS AUGMENT WORK ON KPTS?
+
+
+targets and imgs -> 8 augmented, mosaiced images. targets: however many objects show up in all 8 images. The first number indicates which image it's in.
+Disabled augmentation (and mosaic)
+
+[obj_score class_score cx cy w h x1 y1 x2 y2 x3 y3 x4 y4 x5 y5 x6 y6]
+
+
+Sliding window convolution: instead of sliding a window over an image, convolve the image over the window size, which will efficiently calculate the network output for each original window area
+
+4.30938e+01,  2.40625e+01,  1.45031e+02,  1.52688e+02,  2.55199e-01,  0.00000e+00,  9.80625e+01,  3.71250e+01,  7.48125e+01,  8.91875e+01, -2.05000e+02,  3.26500e+02,  8.65625e+01,  1.51125e+02,  4.33750e+01,  1.17688e+02, -2.03500e+02,  3.06250e+02]], device='cuda:0')]
+
+mask = pred[0, :, 4] > 0.5
+pred[0][mask]  
+pred[0][0][0][0][0]
+tensor([ -0.05311,  -0.08061,   1.33554,   0.82453, -10.82702,   4.59151,  -0.08406,   0.95515,   0.59504,   0.80324,  -6.61230,   4.02145,   0.91390,  -1.00884,   1.74825,   0.45182,  -6.58553,   4.04695], device='cuda:0', grad_fn=<SelectBackward0>)
+
+
+prediction very early in training is this:
+[-0.13128, -0.01405,  0.11025, -0.01978, -6.65872,  4.21669,  0.07850, -0.15356,  0.01877, -0.18925, -6.48383,  4.02528,  0.16451, -0.17443,  0.06702, -0.05506, -6.36076,  4.23090]
+
+index 4 and 5 are large but correct cause they're object and class score, but 10 and 11 and 16 and 17 are similarly large but they should be small, being keypoints. Why is this pattern happening? (every 3 pairs of numbers are large) and this happens on the first forward pass of training
+
+
+
+(Pdb) self.m_kpt
+ModuleList(
+  (0): Conv2d(256, 36, kernel_size=(1, 1), stride=(1, 1))
+  (1): Conv2d(512, 36, kernel_size=(1, 1), stride=(1, 1))
+  (2): Conv2d(1024, 36, kernel_size=(1, 1), stride=(1, 1))
+)
+(Pdb) self.m_kpt[0]
+Conv2d(256, 36, kernel_size=(1, 1), stride=(1, 1))
