@@ -42,7 +42,10 @@ coco/
 coco128/
 VOC/
 turtle_data/
-turtle_keypoints_data/
+keypoints_data/images/
+keypoints_data/labels/
+keypoints_data/turtle/
+keypoints_data/*.txt
 
 coco2017labels-segments.zip
 test2017.zip

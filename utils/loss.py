@@ -451,7 +451,7 @@ class ComputeLoss:
         device = targets.device
         lcls, lbox, lobj, lkpt = torch.zeros(1, device=device), torch.zeros(1, device=device), torch.zeros(1, device=device), torch.zeros(1, device=device)
         tcls, tbox, tkpt, indices, anchors = self.build_targets(p, targets)  # targets
-        sigmas = torch.tensor([1.3, 1.3, 1.3, 1.3, 1.3, 1.3], device=device) / 10.0
+        sigmas = torch.tensor([1]*self.nkpt, device=device) / 10.0
         
         # Losses
         for i, pi in enumerate(p):  # layer index, layer predictions
@@ -516,7 +516,7 @@ class ComputeLoss:
         # Build targets for compute_loss(), input targets(image,class,x,y,w,h)
         na, nt = self.na, targets.shape[0]  # number of anchors, targets
         tcls, tbox, tkpt, indices, anch = [], [], [], [], []
-        gain = torch.ones(19, device=targets.device).long()  # normalized to gridspace gain
+        gain = torch.ones(2 + 4 + self.nkpt*2 + 1, device=targets.device).long()  # normalized to gridspace gain #19
         ai = torch.arange(na, device=targets.device).float().view(na, 1).repeat(1, nt)  # same as .repeat_interleave(nt)
         targets = torch.cat((targets.repeat(na, 1, 1), ai[:, :, None]), 2)  # append anchor indices
 
@@ -528,8 +528,8 @@ class ComputeLoss:
 
         for i in range(self.nl):
             anchors = self.anchors[i]
-            gain[2:18] = torch.tensor(p[i].shape)[8*[3, 2]]   # xyxy gain
-
+            gain[2: 2 + 4 + self.nkpt*2] = torch.tensor(p[i].shape)[(self.nkpt + 2)*[3, 2]]   # xyxy gain # gain[2:18] = torch.tensor(p[i].shape)[8*[3, 2]]   # xyxy gain
+            # [1_ 1_ 4bbox 12kpts 1_]
             # Match targets to anchors
             t = targets * gain
             if nt:
