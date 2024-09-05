@@ -57,18 +57,19 @@ def BigGan_generate(batch_size = 10, desired_num_im = 20):
     return background_images
 
 
-def paste_randomly(background_image, target_image, scale_range=[0.3, 0.7], keypoints=None):
+def paste_randomly(background_image, target_image, scale_range=[0.4, 0.8], keypoints=None):
     """
     Randomly rotates, scales, and translates the target image before pasting onto the background image
     """
-    
+
+    w, h = target_image.size
+
     # Rotate
     rotation_angle = random.uniform(0,360)
     target_image = target_image.rotate(rotation_angle, expand=True)
     rotate_resize = target_image.size
 
     # Downscale
-    w, h = rotate_resize.size
     scale_factor = np.random.uniform(*scale_range, 2)
     scaled_w, scaled_h = int(scale_factor[0] * w), int(scale_factor[1] * h)
     resized_target_image = target_image.resize((scaled_w, scaled_h))
