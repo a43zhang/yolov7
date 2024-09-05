@@ -68,11 +68,10 @@ def paste_randomly(background_image, target_image, scale_range=[0.3, 0.7], keypo
     rotate_resize = target_image.size
 
     # Downscale
-    w, h = target_image.size
-    scale_factor = np.random.uniform(scale_range, 2)
+    w, h = rotate_resize.size
+    scale_factor = np.random.uniform(*scale_range, 2)
     scaled_w, scaled_h = int(scale_factor[0] * w), int(scale_factor[1] * h)
     resized_target_image = target_image.resize((scaled_w, scaled_h))
-
     # Randomize translation
     translated_w, translated_h = random.randint(0, w - scaled_w), random.randint(0, h - scaled_h)
 

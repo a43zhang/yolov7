@@ -46,6 +46,7 @@ keypoints_data/images/
 keypoints_data/labels/
 keypoints_data/turtle/
 keypoints_data/*.txt
+keypoints_data/*.cache
 
 coco2017labels-segments.zip
 test2017.zip
